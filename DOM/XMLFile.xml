@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CSV2XML>
+	<row>
+		<Name>Name1</Name>
+		<Address>Address1</Address>
+	</row>
+	<row>
+		<Name>Name2</Name>
+		<Address>Address2</Address>
+	</row>
+	<row>
+		<Name>Name3</Name>
+		<Address>Address3</Address>
+	</row>
+
+</CSV2XML>

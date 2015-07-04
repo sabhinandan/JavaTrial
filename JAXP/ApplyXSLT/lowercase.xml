@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+  <system.web>
+    <compilation defaultLanguage="vb" debug="true" />
+    <customErrors mode="RemoteOnly" />
+    <authorization>
+        <allow users="*" />
+        <deny roles="WebUsers" />
+    </authorization>
+    <trace enabled="false" requestLimit="10" pageOutput="false" traceMode="SortByTime" localOnly="true" />
+    <globalization requestEncoding="utf-8" responseEncoding="utf-8" />
+  </system.web>
+</configuration>

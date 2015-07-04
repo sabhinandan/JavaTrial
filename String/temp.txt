@@ -1,0 +1,2 @@
+set INSTALLROOT=D:/installs/demoE
+set JAVA_HOME=C:/j2sdk1.4.2_03

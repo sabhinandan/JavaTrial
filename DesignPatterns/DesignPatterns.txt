@@ -1,0 +1,39 @@
+Design patterns give you a shared vocabulary with other devlopers
+
+1)Stratagy Pattern
+
+The Strategy Pattern defines a family of algorithms, encapsulates each one, ane makes them interchangeable. Strategy lets the algorithm vary independently from clients that use it.
+
+Design Principle
+	a) Identify the aspects of your application that vary and seperate them from what stays the same.
+	b) Program to an interface not an implementation.
+	c) Favour composition over inheritance.
+
+	d) Strive for loosly coupled designes between objects that interact
+
+	e) Classes should be open for extension but closed for modification.
+
+	f) Depend upon abstractions. Do not depend upon concrete classes.(Dependency Inversion Principle) It should be pretty clear that reducing dependencies to concrete classes in our code is a "good thing".
+
+
+OO Basics
+a) Abstraction
+b) Encapsulation
+c) Polymorphism
+d) Inheritance
+
+2) Observer Pattern
+The Observer Pattern dfines a one-to-many dependency between objects so that when one object changes state, all of its dependetns are notified and updated automatically.
+
+The subject and observers define the one-to-many relationship. The observers are dependent on the subject such that when the subject's state changes, the observers get notified. Depending on the style of notification, the observer may also be updated with new values.
+
+3) Decorator Pattern
+The Decorator Pattern attaches additional responsibilities to an object dynamically. Decorators provide a flexible alternative to subclassing for extending functionality.
+	a) Decorators have the same supertype as the objects they decorate.
+	b) You can use one or more decorators to wrap an object.
+	c) Given that the decorator has the same supertype as the object it decorates, we can pass around a decorated object in place of the original(wrapped) object.
+	d) The decorator adds its own behavior either before and/or after delegating to the object it decorates to do the rest of the job.
+	e) Objects can be decorated at any time, so we can decorate objects dynamically at runtime with as many decorators as we like.
+
+
+4) Factory Pattern

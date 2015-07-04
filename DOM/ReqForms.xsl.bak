@@ -1,0 +1,935 @@
+<?xml version="1.0"?>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:FormatUtil="http://xml.apache.org/xalan/xsltc/java/com.nightfire.maputil.FormatUtil" exclude-result-prefixes="FormatUtil">
+
+
+
+	<xsl:template match="/">
+		<xsl:apply-templates/>
+	</xsl:template>
+
+	<xsl:template name="lsr_form">
+		<lsr>
+			<xsl:for-each select="admin">
+				<lsr_adminsection>
+					<xsl:call-template name="lsr_adminsection"/>
+				</lsr_adminsection>
+			</xsl:for-each>
+			<xsl:for-each select="lsrbill">
+				<billsection>
+					<xsl:call-template name="lsr_billsection"/>
+				</billsection>
+			</xsl:for-each>
+			<xsl:for-each select="contact">
+				<contactsection>
+					<xsl:call-template name="lsr_contactsection"/>
+				</contactsection>
+			</xsl:for-each>
+			<xsl:for-each select="remarks">
+				<xsl:call-template name="lsr_remarks"/>
+			</xsl:for-each>
+		</lsr>
+	</xsl:template>
+
+	<xsl:template name="hgi_form">
+		<hgi>
+			<huntgroupid>
+				<xsl:call-template name="locnum_TO_LOCNUM"/>
+				<xsl:call-template name="hnum_TO_HNUM"/>
+				<xsl:call-template name="ha_TO_HA"/>
+				<xsl:call-template name="hid_TO_HID"/>
+				<xsl:call-template name="tip_TO_TIP"/>
+				<xsl:call-template name="tli_TO_TLI"/>
+				<xsl:call-template name="hntyp_TO_HNTYP"/>
+			</huntgroupid>
+			<xsl:if test="huntDetail">
+				<huntdetailcontainer type="container">
+					<xsl:for-each select="huntDetail">
+						<!--HLA is required when HA = N or C, otherwise prohibited.
+                                                    HTSEQ is required when HLA is populated, otherwise prohibited.
+                                                    HTN is required when HLA field is populated, otherwise prohibited.-->
+						<xsl:if test="(../ha='N' or ../ha='C')">					
+							<huntdetail>
+								<xsl:call-template name="hla_TO_HLA"/>
+								<xsl:if test="hla!=''">
+									<xsl:call-template name="htseq_TO_HTSEQ"/>
+									<xsl:call-template name="htn_TO_HTN"/>
+								</xsl:if>
+							</huntdetail>
+						</xsl:if>
+					</xsl:for-each>
+				</huntdetailcontainer>
+			</xsl:if>
+		</hgi>
+	</xsl:template>
+
+	<xsl:template name="eu_form">
+		<eu>
+			<locationaccesscontainer type="container">
+				<xsl:for-each select="location">
+				<!--[13-Jul]:For a move, this would be LOCACT=D for the old address which is being disconnected and LOCACT=N for the new address the service is being moved to.  For this scenario (VZE, ACT=T), you can drop the EU Location Access that contains LOCACT=D.-->
+					<xsl:if test="(locact !='D' and $ACT1='T') or $ACT1 !='T'">				
+						<locationaccess>						
+							<xsl:call-template name="locationaccess"/>
+						</locationaccess>
+					</xsl:if>
+				</xsl:for-each>
+			</locationaccesscontainer>
+
+			<xsl:for-each select="eubill">
+				<eu_billsection>
+					<xsl:call-template name="eu_billsection"/>
+				</eu_billsection>
+			</xsl:for-each>
+				<xsl:variable name="LNAVALUE">
+					<xsl:for-each select="/msgenvelope/body/lns/service">
+						<xsl:value-of select="concat(lna,',')"/>
+					</xsl:for-each>
+				</xsl:variable>
+				<!--<test>
+					<xsl:value-of select="$LNAVALUE"/>
+				</test>-->
+				<xsl:if test="$ACT1 = 'T' or contains($LNAVALUE,'T')">
+					<discinfocontainer type="container">
+                        <xsl:if test="disconnectInfo">
+                                <xsl:for-each select="disconnectInfo">
+                                <discinfo>
+                                        <xsl:if test="discNmbr != ''">
+                                                <xsl:call-template name="dnum_TO_DNUM"/>
+                                        </xsl:if>
+                                        <xsl:call-template name="discNmbr_TO_DISCNBR"/>
+                                        <xsl:call-template name="transfer"/>
+                                </discinfo>                                           
+                                </xsl:for-each>
+                        </xsl:if> 
+                        <!-- When ACT='T', field DISCNBR is required. Hence, if DISCNBR is not populated by trinsic, it is defaulted with value of EATN-->
+                        <xsl:if test="not(disconnectInfo) and $ACT1='T'">                                                       
+                                <discinfo>
+                                        <DNUM value="00001" />
+                                        <DISCNBR>
+                                            <xsl:attribute name="value">
+                                                    <xsl:value-of select="string(/msgenvelope/body/localAdmin/eubill/eatn)"/>
+                                            </xsl:attribute>
+                                        </DISCNBR>
+										<xsl:variable name="lnaindex">
+											<xsl:for-each select="/msgenvelope/body/lns/service">
+												<xsl:if test="lna!='D'">
+													<xsl:value-of select="position()"/>
+												</xsl:if>
+											</xsl:for-each>
+										</xsl:variable>
+										<xsl:for-each select="/msgenvelope/body/lns/service[position()=(number(substring($lnaindex,1,1)))]">
+											<TRANSFER>
+												<xsl:call-template name="tcopt_TO_TCOPT"/>										
+												<xsl:call-template name="tctopri_TO_TCTOPRI"/>																															
+											</TRANSFER>
+										</xsl:for-each>
+
+                                </discinfo>
+                        </xsl:if>
+					</discinfocontainer>
+				</xsl:if>
+		</eu>
+	</xsl:template>
+
+	<xsl:template name="dl_form">
+		<xsl:choose>
+			<xsl:when test="cont/lact='O'"/>
+			<xsl:when test="/msgenvelope/body/localAdmin/location/erl='' and (cont/lact='Z' and not($ACT1= 'N' or $ACT1 = 'T'))"/>
+			<xsl:otherwise>
+				<dl>
+					
+					<xsl:for-each select="cont">
+						<xsl:call-template name="listingcontrolsection"/>
+					</xsl:for-each>
+					<xsl:for-each select="inst">
+						<xsl:call-template name="listinginstructionsection"/>
+					</xsl:for-each>
+					<xsl:for-each select="ind">
+						<xsl:call-template name="listingindicatorssection"/>
+					</xsl:for-each>
+					<xsl:if test="daddrs">
+						<dl_deliveryaddresssection>
+							<xsl:if test="daddrs/dirspecs">
+								<directorycontainer type="container">
+									<xsl:for-each select="daddrs">
+										<xsl:call-template name="dl_deliveryaddresssection"/>
+									</xsl:for-each>
+								</directorycontainer>
+							</xsl:if>
+						</dl_deliveryaddresssection>
+					</xsl:if>
+					<xsl:for-each select="adv">
+						<xsl:call-template name="dl_advertisingsection"/>
+					</xsl:for-each>
+					<xsl:if test="dscr">
+						<dl_captionindentcontainer type="container">
+							<xsl:for-each select="dscr">
+								<xsl:call-template name="dl_captionindentcontainer"/>
+							</xsl:for-each>
+						</dl_captionindentcontainer>
+					</xsl:if>
+				</dl>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:template>
+
+	<xsl:template name="ps_form"> 
+	<!--<xsl:if test="(service/lna ='C' and ((service/blockinfo[*][not(ba='N') and not(ba = 'E' and @existing ='Y')] ) or (service/lpicci !='N' and service/picci!='N') or not(/msgenvelope/body/localAdmin/admin/lscp != '') or (service/featureinfo[*]/fa!='W'))) or service/lna!='C'">-->
+		<xsl:choose>
+
+		<xsl:when test="($ACT='C' and service/lna ='C' and ((service/blockinfo[*][ba = 'N' or (@existing = 'Y' and ba = 'E')]) and (featureinfo[*]/fa = 'W') and (lpicci ='N' and picci='N') and not(/msgenvelope/body/localAdmin/admin/lscp != '')))">
+		</xsl:when>
+		<xsl:otherwise>
+		<ps>
+					<ps_adminsection>
+						<xsl:call-template name="pqty_TO_PQTY"/>
+					</ps_adminsection>
+							
+							<xsl:if test="service">			
+									<ps_servicedetailscontainer type="container">
+											<xsl:for-each select="service">
+						
+													<!--<xsl:if test="(lna ='C' and ((blockinfo[*][ba!='N' and not(ba = 'E' and @existing ='Y')] ) or (not(lpicci ='N') and not(picci='N')) or (featureinfo[*]/fa!='W'))) or lna!='C'">-->
+															<xsl:choose>
+																<xsl:when test="lna='W' and $ACT1='C'">
+																<!--Do Nothing-->
+																</xsl:when>
+																<xsl:when test="lna !='M' and $ACT1='T'">
+																<!--Do Nothing-->
+																</xsl:when>
+																<xsl:otherwise>
+																<!--whenever Trinsic sends BA = N or E & FA = W, there is no change on the line. So we need to drop off the corresponding LNA section having all BA either N or E & all FA = W.-->
+
+																	<!--<xsl:if test="(lna ='C' and ((blockinfo[*][ba!='N' and ba!='E'] or blockinfo[*]/@existing!='Y') or (featureinfo[*]/fa!='W'))) or lna!='C'">-->
+																		<ps_servicedetails>
+																			<xsl:call-template name="ps_servicedetails"/>
+																		</ps_servicedetails>
+																	<!--</xsl:if>-->
+																</xsl:otherwise>
+															</xsl:choose>
+										<!--		</xsl:if>-->
+							 				</xsl:for-each>
+								</ps_servicedetailscontainer>			
+						</xsl:if>
+		</ps>
+		</xsl:otherwise>
+	</xsl:choose>
+
+	</xsl:template>
+
+	<xsl:template name="supplier_eu_form">
+		<eu>
+			<locationaccesscontainer type="container">
+				<xsl:for-each select="location">				
+					<locationaccess>
+						<xsl:call-template name="Supplier_eu_locationaccess"/>
+					</locationaccess>
+				</xsl:for-each>
+			</locationaccesscontainer>
+		</eu>
+	</xsl:template>
+
+
+	<xsl:template name="supplier_dl_form">
+		<dl>
+			<xsl:for-each select="cont">
+				<listingcontrolsection>
+					<xsl:call-template name="dlnum_TO_DLNUM"/>
+				</listingcontrolsection>
+			</xsl:for-each>
+			<xsl:for-each select="dscr">
+				<level0>
+					<xsl:call-template name="so_TO_SOSL"/>
+
+					<!--SEQTEXT is required when SOSL = A, otherwise prohibited.-->
+					<xsl:if test="so='A'">
+						<xsl:call-template name="seqtext_TO_SEQTEXT"/>
+					</xsl:if>
+					<xsl:call-template name="seqtn_TO_SEQTN"/>
+					<xsl:for-each select="hdrinfo">
+
+						<!--HS is required when STYC = CI or SI and LACT = N or I, otherwise prohibited.-->
+						<xsl:if test="(../../cont/styc='CI' or ../../cont/styc='SI') and (../../cont/lact='N' or ../../cont/lact='I' or ($ACT1= 'N' or $ACT1 = 'T'))">
+							<xsl:call-template name="hs_TO_HS"/>
+						</xsl:if>
+
+						<!--HDRTN is required when STYC = SI, otherwise prohibited.-->
+						<xsl:if test="../../cont/styc='SI'">
+							<xsl:call-template name="htn_TO_HDRTN"/>
+						</xsl:if>
+
+						<!--HADDR is optional when STYC = CI, otherwise prohibited.-->
+						<xsl:if test="../../cont/styc='CI'">
+							<xsl:call-template name="haddr_TO_HADDR"/>
+						</xsl:if>
+					</xsl:for-each>
+				</level0>
+			</xsl:for-each>
+		</dl>
+	</xsl:template>
+
+	<xsl:template name="supplier_ps_form">
+	<xsl:if test="(service/lna ='C' and (service/blockinfo[*][ba!='N' and ba!='E'] or (service/featureinfo[*]/fa!='W'))) or service/lna!='C'">
+		<ps>
+			<xsl:if test="service">
+				<ps_servicedetailscontainer type="container">
+					<xsl:for-each select="service">
+						<ps_servicedetails>
+							<xsl:call-template name="Supplier_ps_servicedetails"/>
+						</ps_servicedetails>
+					</xsl:for-each>
+				</ps_servicedetailscontainer>
+			</xsl:if>
+		</ps>
+	</xsl:if>
+	</xsl:template>
+
+
+
+	<!-- ............Mapping for LSR form fields ............. -->
+
+	<xsl:template name="lsr_adminsection">
+		<xsl:call-template name="ccna_TO_CCNA"/>
+		<xsl:call-template name="pon_TO_PON"/>
+		<xsl:call-template name="ver_TO_VER"/>
+		<xsl:call-template name="locqty_TO_LOCQTY"/>
+		<xsl:call-template name="htqty_TO_HTQTY"/>
+		<xsl:call-template name="atn_TO_ATN"/>
+		<xsl:call-template name="dtsent_TO_DTSENT"/>
+		<xsl:call-template name="ddd_TO_DDD"/>
+
+		<!--DDDO is optional when (((the first position of the REQTYP field = D or E) 
+        and(the ACT field = "T")) or (the LNA field on the RS or PS Forms = "T")), otherwise prohibited.-->
+		<xsl:choose>
+			<xsl:when test="$ACT1 !='T'"><!--Do Nothing--></xsl:when>
+			<xsl:when test="($ACT1='T')or (/msgenvelope/body/lns/service[*]/lna='T')">
+				<xsl:call-template name="dddo_TO_DDDO"/>
+			</xsl:when>			
+		</xsl:choose>
+
+		<xsl:call-template name="reqtyp_TO_REQTYP"/>
+		<xsl:call-template name="act_TO_ACT"/>
+		<xsl:call-template name="sup_TO_SUP"/>
+		<!--EXP is prohibited when ACT = D; otherwise optional  -->
+
+		<xsl:if test="$ACT1!='D'">
+			<xsl:call-template name="exp_TO_EXP"/>
+		</xsl:if>
+
+		<!--CC is required when the CCNA field is "CUS", otherwise prohibited.-->
+		<xsl:if test="ccna='CUS'">
+			<xsl:call-template name="cc_TO_CC"/>
+		</xsl:if>
+
+		<xsl:call-template name="agauth_TO_AGAUTH"/>
+
+		<!--For the field PORTTYP,only value 'A' is supported by VZE. But ZTEL does not support 'A' and this field is optional for VZE -->
+		<!--xsl:call-template name="porttyp_TO_PORTTYP"/-->
+
+		<!-- ACTL field is prohibited for REQTYP = C, E, J, K, L, N, P, R, or S OR The 1st character of REQTYP is D and the PS SDP -->
+		<!-- field is NOT A.But Reqtp=M(D)is only supporte Reqtyp.And PS SDP is not supported by ZTEL.So no need to map this field -->
+		<!--xsl:call-template name="actl_TO_ACTL"/-->
+
+		<xsl:call-template name="lst_TO_LST"/>
+		<xsl:call-template name="lso_TO_LSO"/>
+		<xsl:call-template name="tos_TO_TOS"/>
+		<xsl:call-template name="spec_TO_SPEC"/>
+		<xsl:call-template name="nc_TO_NC"/>
+
+		<xsl:choose>
+			<xsl:when test="substring(/msgenvelope/body/lns/service[*]/ltos,2,1)='J'">
+				<!--NCI is prohibited when REQTYP = D or F and the 2nd character of the LTOS (PS) = J-->
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:call-template name="nci_TO_NCI"/>
+			</xsl:otherwise>
+		</xsl:choose>
+
+		<!--SECNCI is required when NC is populated, except when the 2nd character of the TOS =Y, 
+                otherwise prohibited.-->
+
+		<xsl:if test="nc !='' and $TOS2 !='Y'">
+			<xsl:call-template name="secnci_TO_SECNCI"/>
+		</xsl:if>
+		<!--xsl:call-template name="sli_TO_SLI"/-->
+	</xsl:template>
+
+	<xsl:template name="lsr_billsection">
+			 <!--<xsl:call-template name="ban1_TO_BAN1"/> -->
+		<xsl:if test= "not(contains(acna,'-') and $ACT = 'V' and substring(/msgenvelope/body/lns/service/ltos,2,1) = 'P')">
+			<xsl:call-template name="acna_TO_ACNA"/>
+		</xsl:if>
+	</xsl:template>
+
+	<xsl:template name="lsr_contactsection">
+		<xsl:for-each select="init">
+			<xsl:call-template name="initname_TO_INIT"/>
+		<!--	<xsl:call-template name="inittelno_TO_INITTELNO"/> -->
+		</xsl:for-each>
+		<xsl:for-each select="impcon">
+			<IMPCON>
+				<xsl:call-template name="impconname_TO_IMPCONNAME"/>
+				<xsl:if test="name !=''">
+					<!-- TELNO(IMPCON) is required when NAME(IMPCON) is populated, otherwise prohibited -->
+					<xsl:call-template name="impcontelno_TO_IMPCONTELNO"/>
+				</xsl:if>
+			</IMPCON>
+		</xsl:for-each>
+	</xsl:template>
+
+	<xsl:template name="lsr_remarks">
+		<xsl:call-template name="remarks_TO_REMARKS"/>
+	</xsl:template>
+
+
+
+	<!-- ............Mapping for EU form fields............. -->
+
+	<xsl:template name="locationaccess">
+		<xsl:call-template name="locnum_TO_LOCNUM"/>
+		<xsl:call-template name="name_TO_NAME"/>		
+		<xsl:for-each select="address">
+			<!--SANO and SASN is required when AFT = C or N, otherwise prohibited.-->
+			<xsl:if test="(aft = 'C' or aft = 'N') and ((($ACT1='N' or $ACT1='T') and ($TOS2!='F' and $TOS2!='P' and $TOS2!='R' and $TOS2!='Y')) or
+			(/msgenvelope/body/lns/service[*]/lna='T' and $ACT1 != 'T') or ($TOS4='R' and (/msgenvelope/body/lns/service[*][lna='N' or lna='V'] or (/msgenvelope/body/lns/service[*][lna='M'] and $ACT1 = 'T')))) ">
+				<xsl:call-template name="adrNo_TO_SANO"/>
+				<xsl:call-template name="adrSn_TO_SASN"/>			
+				<!--SASF is optional when SANO are populated, otherwise prohibited-->
+				<xsl:if test="adrNo != ''">
+					<xsl:call-template name="adrSf_TO_SASF"/>
+				</xsl:if>
+				<!--SASD, SATH and SASS is optional when SASN is populated, otherwise prohibited.-->
+				<xsl:if test="adrSn != ''">
+					<xsl:call-template name="adrSdp_TO_SASD"/>
+					<xsl:call-template name="adrTh_TO_SATH"/>
+					<xsl:call-template name="adrSds_TO_SASS"/>
+				</xsl:if>
+			</xsl:if>
+
+			<xsl:call-template name="aai_TO_AAI"/>
+
+			<!--LD1 is optional when SASN is populated, otherwise prohibited.
+			LV1 is required when LD1 is populated, otherwise prohibited.
+			LD2 is optional when SASN is populated, otherwise prohibited.
+			LV2 is required when LD2 is populated, otherwise prohibited.
+			LD3 is optional when SASN field is populated, otherwise prohibited.
+			LV3 is required when LD3 is populated, otherwise prohibited.-->
+			<xsl:if test="adrSn != '' and ((aft = 'C' or aft = 'N') and ((($ACT1='N' or $ACT1='T') and ($TOS2!='F' and $TOS2!='P' and $TOS2!='R' and $TOS2!='Y')) or
+			(/msgenvelope/body/lns/service[*]/lna='T' and $ACT1 != 'T') or ($TOS4='R' and (/msgenvelope/body/lns/service[*][lna='N' or lna='V'] or (/msgenvelope/body/lns/service[*][lna='M'] and $ACT1 = 'T')))))">
+				
+				<xsl:if test="ld1 = 'BLDG' or ld1 = 'PIER' or ld1 = 'WNG'">
+					<xsl:call-template name="ld1_TO_LD1"/>
+					<xsl:call-template name="lv1_TO_LV1"/>
+				</xsl:if>
+
+				<xsl:if test="ld2 = 'BLDG' or ld2 = 'PIER' or ld2 = 'WNG'">
+					<xsl:call-template name="ld2_TO_LD1"/>
+					<xsl:call-template name="lv2_TO_LV1"/>
+				</xsl:if>
+
+				<xsl:if test="ld3 = 'BLDG' or ld3 = 'PIER' or ld3 = 'WNG'">
+					<xsl:call-template name="ld3_TO_LD1"/>
+					<xsl:call-template name="lv3_TO_LV1"/>
+				</xsl:if>
+				<xsl:if test="ld1 = 'FLR' or ld1 = 'FL'">
+					<xsl:call-template name="ld1_TO_LD2"/>
+					<xsl:call-template name="lv1_TO_LV2"/>
+				</xsl:if>
+				<xsl:if test="ld2 = 'FLR' or ld2 = 'FL'">
+					<xsl:call-template name="ld2_TO_LD2"/>
+					<xsl:call-template name="lv2_TO_LV2"/>
+				</xsl:if>
+				<xsl:if test="ld3 = 'FLR' or ld3 = 'FL'">
+					<xsl:call-template name="ld3_TO_LD2"/>
+					<xsl:call-template name="lv3_TO_LV2"/>
+				</xsl:if>
+
+				<xsl:if test="ld1 = 'APT' or ld1 = 'LOT' or ld1 = 'RM' or ld1 = 'SLIP' or ld1 = 'SUIT' or ld1 = 'UNIT'">
+					<xsl:call-template name="ld1_TO_LD3"/>
+					<xsl:call-template name="lv1_TO_LV3"/>
+				</xsl:if>
+
+				<xsl:if test="ld2 = 'APT' or ld2 = 'LOT' or ld2 = 'RM' or ld2 = 'SLIP' or ld2 = 'SUIT' or ld2 = 'UNIT'">
+					<xsl:call-template name="ld2_TO_LD3"/>
+					<xsl:call-template name="lv2_TO_LV3"/>
+				</xsl:if>
+
+				<xsl:if test="ld3 = 'APT' or ld3 = 'LOT' or ld3 = 'RM' or ld3 = 'SLIP' or ld3 = 'SUIT' or ld3 = 'UNIT'">
+					<xsl:call-template name="ld3_TO_LD3"/>
+					<xsl:call-template name="lv3_TO_LV3"/>
+				</xsl:if>
+			</xsl:if>
+
+			<!--CITY is required when AFT is populated, otherwise prohibited.-->
+			<xsl:if test="aft!='' and ((($ACT1='N' or $ACT1='T') and ($TOS2!='F' and $TOS2!='P' and $TOS2!='R' and $TOS2!='Y')) or
+			(/msgenvelope/body/lns/service[*]/lna='T' and $ACT1 != 'T') or ($TOS4='R' and (/msgenvelope/body/lns/service[*][lna='N' or lna='V'] or (/msgenvelope/body/lns/service[*][lna='M'] and $ACT1 = 'T'))))">
+				<xsl:call-template name="city_TO_CITY"/>
+			</xsl:if>			
+			<xsl:call-template name="state_TO_STATE"/>
+			<!--ZIP is required when AFT field is populated, otherwise prohibited.-->
+			<xsl:if test="aft!='' and ((($ACT1='N' or $ACT1='T') and ($TOS2!='F' and $TOS2!='P' and $TOS2!='R' and $TOS2!='Y')) or
+			(/msgenvelope/body/lns/service[*]/lna='T' and $ACT1 != 'T') or ($TOS4='R' and (/msgenvelope/body/lns/service[*][lna='N' or lna='V'] or (/msgenvelope/body/lns/service[*][lna='M'] and $ACT1 = 'T'))))">
+				<xsl:call-template name="zipcode_TO_ZIP"/>
+			</xsl:if>
+		</xsl:for-each>		
+		<xsl:if test="$REQTYP = 'M' and $ACT  = 'V'">
+			<xsl:call-template name="erl_TO_ELT"/>
+		</xsl:if>
+		<!--<xsl:call-template name="lcon_TO_LCON"/>
+		<xsl:if test="lcon != ''">
+			<xsl:call-template name="lconTelno_TO_TELNO"/>
+		</xsl:if>-->
+		<xsl:call-template name="wsop_TO_WSOP"/>
+		<!--(ACT=N,T and 2nd TOS not = F,P,R,Y) or (4th TOS=R & any PS.LNA or RS.LNA=N,V) or when the LNA  on the RS or PS Form = "T"
+		Otherwise phd.-->
+		<!--AFT is required when ((( ACT = N or T )) and the 2nd character of TOS does not equal P, R, Y) 
+		or (when the LNA  on the RS or PS Form = &amp;quot;T&amp;quot;)-->
+		<xsl:for-each select="address">
+		   <xsl:if test="(($ACT1='N' or $ACT1='T') and ($TOS2!='F' and $TOS2!='P' and $TOS2!='R' and $TOS2!='Y')) or
+			(/msgenvelope/body/lns/service[*]/lna='T' and $ACT1 != 'T') or ($TOS4='R' and (/msgenvelope/body/lns/service[*][lna='N' or lna='V'] or (/msgenvelope/body/lns/service[*][lna='M'] and $ACT1 = 'T')))"> 
+			  <xsl:call-template name="aft_TO_AFT"/>
+             </xsl:if> 
+           </xsl:for-each>		
+	</xsl:template>
+
+	<xsl:template name="eu_billsection">
+		<xsl:call-template name="eatn_TO_EATN"/>
+		<xsl:call-template name="fbi_TO_FBI"/>
+	</xsl:template>
+
+	<!--<xsl:template name="discinfo">
+		<xsl:if test="discNmbr != ''">
+			<xsl:call-template name="dnum_TO_DNUM"/>
+		</xsl:if>
+		<xsl:call-template name="discNmbr_TO_DISCNBR"/>
+		<xsl:call-template name="transfer"/>
+	</xsl:template>-->
+
+	<xsl:template name="Supplier_eu_locationaccess">
+		<xsl:call-template name="locnum_TO_LOCNUM"/>
+		<xsl:for-each select="address">
+			<!--ROUTE is prohibited when AFT not = C.and BOX is required when ROUTE is populated, otherwise prohibited.-->
+			<xsl:if test="(($ACT1='N' or $ACT1='T') and ($TOS2!='F' and $TOS2!='P' and $TOS2!='R' and $TOS2!='Y')) or
+			(/msgenvelope/body/lns/service[*]/lna='T' and $ACT1 != 'T') or ($TOS4='R' and (/msgenvelope/body/lns/service[*][lna='N' or lna='V'] or (/msgenvelope/body/lns/service[*][lna='M'] and $ACT1 = 'T')))"> 
+		
+			<xsl:if test="aft = 'C'">
+				<xsl:call-template name="route_TO_ROUTE"/>
+				<xsl:call-template name="box_TO_BOX"/>
+			</xsl:if>
+		</xsl:if>
+		</xsl:for-each>
+	</xsl:template>
+
+
+	<!--............Mapping for DL form fiels...............-->
+
+	<xsl:template name="listingcontrolsection">
+		<listingcontrolsection>
+			<xsl:call-template name="dlnum_TO_DLNUM"/>
+			<xsl:call-template name="lact_TO_LACT"/>
+			<xsl:call-template name="ali_TO_ALI"/>
+			<xsl:call-template name="rty_TO_RTY"/>
+			<xsl:call-template name="lty_TO_LTY"/>
+			<xsl:call-template name="styc_TO_STYC"/>
+			<xsl:call-template name="toa_TO_TOA"/>
+			<xsl:call-template name="doi_TO_DOI"/>
+		</listingcontrolsection>
+	</xsl:template>
+
+	<xsl:template name="listinginstructionsection">
+		<listinginstructionsection>
+			<xsl:call-template name="ltn_TO_LTN"/>
+			<xsl:call-template name="lnln_TO_LNLN"/>
+			<xsl:call-template name="lnfn_TO_LNFN"/>
+			<xsl:call-template name="pla_TO_PLA"/>
+			<xsl:call-template name="des_TO_DES"/>
+			<xsl:call-template name="tl_TO_TL"/>
+			<xsl:call-template name="tit1e1_TO_TITLE1"/>
+			<xsl:call-template name="tit1e2_TO_TITLE2"/>
+			<xsl:for-each select="address">
+				<!--LANO is optional when LASN is populated, otherwise prohibited.-->
+				<!--LASD is optional when LASN is populated, otherwise prohibited.-->
+				<!--LASN is optional when LACT = N or I and ADI does not = O, otherwise prohibited.-->
+				<!--LASF is optional when LANO is populated, otherwise prohibited.-->
+				<!--LATH is optional when LASN is populated, otherwise prohibited.-->
+				<!--LASS is optional when LASN is populated, otherwise prohibited.-->
+
+
+				<xsl:if test="adrSn !='' and ((aft = 'C' or aft = 'N') and ((($ACT1='N' or $ACT1='T') and ($TOS2!='F' and $TOS2!='P' and $TOS2!='R' and $TOS2!='Y')) or
+			(/msgenvelope/body/lns/service[*]/lna='T' and $ACT1 != 'T') or ($TOS4='R' and (/msgenvelope/body/lns/service[*][lna='N' or lna='V'] or (/msgenvelope/body/lns/service[*][lna='M'] and $ACT1 = 'T')))))">
+					<xsl:if test="(../../cont/lact='N' or ../../cont/lact ='I' or ($ACT1= 'N' or $ACT1 = 'T')) and not(../adi='O')">
+						<xsl:call-template name="adrNo_TO_LANO"/>
+						<xsl:if test="adrNo !=''">
+							<xsl:call-template name="adrSf_TO_LASF"/>
+						</xsl:if>
+						<xsl:call-template name="adrSdp_TO_LASD"/>
+						<xsl:call-template name="adrSn_TO_LASN"/>
+						<xsl:call-template name="adrTh_TO_LATH"/>
+						<xsl:call-template name="adrSds_TO_LASS"/>
+					</xsl:if>
+				</xsl:if>
+
+				<!--LALOC is prohibited when LACT not = N or I, or ADI = O.
+                LAST is required when LALOC is populated, otherwise prohibited.
+                LAZC is required when LALOC is populated, otherwise prohibited. -->
+
+				<xsl:if test="city !=''">
+					<xsl:if test="((../../cont/lact='N' or ($ACT1= 'N' or $ACT1 = 'T')) or ../../cont/lact='I') and not(../adi='O')">
+						<xsl:call-template name="city_TO_LALOC"/>
+						<xsl:call-template name="state_TO_LAST"/>
+						<xsl:call-template name="zipcode_TO_LAZC"/>
+					</xsl:if>
+				</xsl:if>
+			</xsl:for-each>
+			<xsl:call-template name="textcontainer"/>
+			<!--ADI is prohibited when LANO, LASF, LASD, LASN, LATH, LASS, LALOC, LAST or LAZC are populated.-->
+			<xsl:if test="not(address/adrNo!='') and not(address/adrSf!='') and not(address/adrSdp!='') and not(address/adrSn!='') and not(address/adrTh!='') and not(address/adrSds!='') and not(address/city!='') and not(address/state!='') and not(address/zipcode!='')">
+				<xsl:call-template name="adi_TO_ADI"/>
+			</xsl:if>
+		</listinginstructionsection>
+	</xsl:template>
+
+	<xsl:template name="textcontainer">
+		<xsl:if test="ltxnum!='' or ltxty!='' or ltext!=''">
+			<textcontainer type="container">
+				<text>
+					<xsl:call-template name="ltxnum_TO_LTXNUM"/>
+					<xsl:call-template name="ltxty_TO_LTXTY"/>
+					<!--LTEXT is required when the LTXTY field is populated with the values "EM", "ITX", "LOI", "TNL", "TNR", "URL" or when the 2nd and 3rd characters of RTY field are = AC, Otherwise prohibited.-->
+					<!-- <xsl:if test="FormatUtil:isMember(ltxty,'EM,ITX,LOI,TNL,TNR,URL') or substring(../cont/rty,2,2)='AC'"> -->
+						<xsl:call-template name="ltext_TO_LTEXT"/>
+					<!-- </xsl:if> -->
+				</text>
+			</textcontainer>
+		</xsl:if>
+	</xsl:template>
+
+
+	<xsl:template name="listingindicatorssection">
+		<listingindicatorssection>
+			<xsl:call-template name="dlnm_TO_DLNM"/>
+		</listingindicatorssection>
+	</xsl:template>
+
+	<xsl:template name="dl_deliveryaddresssection">
+		<xsl:call-template name="directorycontainer"/>
+	</xsl:template>
+
+
+	<xsl:template name="directorycontainer">
+		<xsl:for-each select="dirspecs">
+			<directory>
+
+				<!--DIRTYP is required when DIRQTYA or DIRQTYNC is populated, otherwise prohibited.
+                                DIRQTYNC is required when (ACT = N or T and the RTY = LML), otherwise prohibited.-->
+				<xsl:choose>
+					<xsl:when test="dirqtya!=''">
+						<xsl:call-template name="dirtyp_TO_DIRTYP"/>
+					</xsl:when>
+					<xsl:when test="dirqtync!=''">
+						<xsl:if test="($ACT1='N' or $ACT1 = 'T') and ../../cont/rty='LML'">
+							<xsl:call-template name="dirtyp_TO_DIRTYP"/>
+						</xsl:if>
+					</xsl:when>
+					<xsl:otherwise>
+					</xsl:otherwise>
+				</xsl:choose>
+				<xsl:call-template name="dirqtya_TO_DIRQTYA"/>
+				<xsl:if test="($ACT1='N' or $ACT1 = 'T') and ../../cont/rty='LML'">
+					<xsl:call-template name="dirqtync_TO_DIRQTYNC"/>
+				</xsl:if>
+			</directory>
+		</xsl:for-each>
+	</xsl:template>
+
+	<xsl:template name="dl_advertisingsection">
+		<dl_advertisingsection>
+			<xsl:call-template name="yph_TO_YPH"/>
+			<xsl:call-template name="yphv_TO_YPHV"/>
+		</dl_advertisingsection>
+	</xsl:template>
+
+
+	<xsl:template name="dl_captionindentcontainer">
+		<dl_captionindent>
+			<xsl:for-each select="hdrinfo">
+
+				<!--LVL is required when the DOI field is 2 or greater, otherwise prohibited.
+                                PLS is required when the DOI field is 2 or greater, otherwise prohibited.
+                                PLINFO is required when the DOI field is 2 or greater, otherwise prohibited.-->
+
+				<!--Drop the field DOI in Maps for either LACT = Z or STYC = SL -->
+
+				<!--<xsl:if test="../../cont/doi != '' and not(../../cont/lact = 'Z') and not(../../cont/styc = 'SL') ">-->
+					<xsl:if test="../../cont/doi &gt;= '2'">
+						<xsl:call-template name="lvl_TO_LVL"/>
+						<xsl:call-template name="pls_TO_PLS"/>
+						<xsl:call-template name="plinfo_TO_PLINFO"/>
+					</xsl:if>
+				<!--</xsl:if>-->
+
+				<xsl:call-template name="pltn_TO_PLTN"/>
+
+				<!--/xsl:for-each>
+                                      xsl:call-template name="so_TO_SO"/>
+                               <xsl:for-each select="hdrinfo"-->
+
+				<!--FAINFO is required when the SO field is A and the PLS field is N, otherwise prohibited.
+                               SO is not mapped in maps. So FAINFO field has to be dropped-->
+
+				<!--xsl:call-template name="fainfo_TO_FAINFO"/-->
+				<xsl:call-template name="fatn_TO_FATN"/>
+			</xsl:for-each>
+		</dl_captionindent>
+	</xsl:template>
+
+
+	<!--............Mapping for PS form fiels...............-->
+
+	<xsl:template name="ps_servicedetails">
+		<xsl:call-template name="lnum_TO_LOCNUM"/>
+		<xsl:call-template name="lnum_TO_LNUM"/>
+		<xsl:call-template name="lna_TO_LNA"/>
+
+		<!-- Rules: LTOS is prohibited when 2nd character of TOS = C or T, otherwise required.-->
+		<xsl:if test="not(substring($TOS,2,1)='C' or substring($TOS,2,1)='T') ">
+			<xsl:call-template name="ltos_TO_LTOS"/>
+		</xsl:if>
+
+		<!-- Rules: TNS is prohibited when 2nd character of TOS = Y, otherwise required.-->
+		<xsl:if test="not(substring($TOS,2,1)='Y') ">
+			<xsl:call-template name="tns_TO_TNS"/>
+		</xsl:if>
+
+		<xsl:call-template name="ters_TO_TERS"/>
+
+		<!-- Rules: OTN is required when LNA = X, optional when LNA = C, otherwise prohibited. -->
+		<xsl:choose>
+			<xsl:when test="not(lna='X' or lna='C')">
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:call-template name="otn_TO_OTN"/>
+			</xsl:otherwise>
+		</xsl:choose>
+
+		<!--Rules:PIC is prohibited when LNA = D, B, S, X or 2nd character of the TOS field = Y.LPIC is prohibited when LNA = D, B, X, S or the 2nd character of TOS = Y.-->
+		<xsl:choose>
+			<xsl:when test="(lna='D' or lna='B' or lna='L' or lna='X') or substring($TOS,2,1)='Y'">
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:call-template name="pic_TO_PIC"/>
+				<xsl:call-template name="lpic_TO_LPIC"/>
+			</xsl:otherwise>
+		</xsl:choose>
+
+		<xsl:call-template name="ecckt_TO_ECCKT"/>
+		<xsl:call-template name="transfer"/>
+
+		<!--Rules : For BAN SYSTEMID is prohibited. -->
+		<!--xsl:if test="not($STATE = 'CT' or $STATE = 'MA' or $STATE = 'ME' or $STATE = 'NH' or $STATE = 'NY' or $STATE = 'RI' or $STATE ='VT')" >
+                                <xsl:call-template name="systemid_TO_SYSTEMID"/>
+                </xsl:if-->
+		<xsl:if test="not(contains(systemid,'-')) and substring(ltos,2,1) = 'P'">
+			<xsl:call-template name="shelf_TO_SHELF"/>
+		</xsl:if>
+		<xsl:if test="blockinfo/@existing ='Y' or blockinfo/@existing ='N'">
+			<xsl:for-each select="blockinfo">
+				<xsl:choose>
+				<xsl:when test="(ba ='N' or (ba='E' and @existing ='Y')) and ../lna='C' and $ACT ='C'">
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:if test="(ba ='A' or ba ='D' or ba = 'E') and (($ACT1='W' or (../lna='N' or ../lna='M' or ../lna='V'))or (($ACT1='S' or $ACT1='B') or ../lna='C')) 
+		or (../lna ='N' or ../lna= 'M')">
+				<blockcontainer type="container">
+						<xsl:call-template name="blockcontainer"/>
+				</blockcontainer>
+		</xsl:if>
+						</xsl:otherwise>
+				
+						</xsl:choose>
+			
+				</xsl:for-each>
+			
+		</xsl:if>
+
+		<xsl:if test="featureinfo/@existing ='Y' or featureinfo/@existing ='N'">
+			<xsl:choose>
+				<xsl:when test="lna='C' and $ACT ='C' and (count(featureinfo) = count(featureinfo[fa = 'W']))">
+				</xsl:when>
+				<xsl:when test="$ACT1='C' and lna='X' ">
+				</xsl:when>
+				<xsl:when test="$ACT1='W'">
+				</xsl:when>
+				<xsl:when test="$ACT1='W' or $ACT1='S' or lna='D' or (lna='W' and $ACT != 'V' and $ACT != 'M') or lna='B' or lna='P'">
+				</xsl:when>
+				
+				<xsl:otherwise>	
+			<!--<xsl:if test="(featureinfo[*]/fa !='W')">-->
+				<featurecontainer type="container">
+				
+					<xsl:for-each select="featureinfo">
+						<xsl:choose>
+							<xsl:when test="feature='TTR00' and ($STATE= 'VA' or $STATE= 'DC' or $STATE= 'MD' or $STATE= 'WV')"/>
+							<xsl:otherwise>
+							<xsl:call-template name="featurecontainer"/>
+							</xsl:otherwise>
+						</xsl:choose>
+					</xsl:for-each>				
+				</featurecontainer>
+				</xsl:otherwise>
+			</xsl:choose>
+			<!--</xsl:if>-->
+		</xsl:if>
+
+		<!-- Rules: S is required when the LNA field = S, otherwise prohibited.-->
+		<xsl:choose>
+			<xsl:when test="not(lna='L')">
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:call-template name="sai_TO_s"/>
+			</xsl:otherwise>
+		</xsl:choose>
+			<xsl:if test="$ACT='C' and(lna='C' or lna='R') ">
+					<xsl:call-template name="lscp_TO_LSCP"/>
+			</xsl:if>
+	</xsl:template>
+
+	<xsl:template name="blockcontainer">
+		<xsl:if test="(ba ='A' or ba ='D' or ba = 'E') and (($ACT1='W' or (../lna='N' or ../lna='M' or ../lna='V'))or (($ACT1='S' or $ACT1='B') or ../lna='C')) 
+		or (../lna ='N' or ../lna= 'M')">
+			<block>
+				<xsl:call-template name="ba_TO_BA"/>
+				<xsl:call-template name="block_TO_BLOCK"/>
+			</block>
+		</xsl:if>
+	</xsl:template>
+
+	<xsl:template name="featurecontainer">
+		<!--	<feature>-->
+		<!-- Rules: FA is prohibited when REQTYP is not = S and the ACT = W.
+                                    FA is prohibited when ACT = W or S or LNA = D, W, B, or P.
+                                    FA is prohibited when LSR ACT is C, LNA is X and AC is not populated-->
+		<xsl:choose>
+			<xsl:when test="$ACT1='W'">
+			</xsl:when>
+			<xsl:when test="$ACT1='W' or $ACT1='S' or ../lna='D' or (../lna='W' and $ACT != 'V' and $ACT != 'M') or ../lna='B' or ../lna='P'">
+			</xsl:when>
+			<xsl:when test="$ACT1='C' and ../lna='X' ">
+			</xsl:when>
+			<xsl:when test="($ACT1='T' and fa='W' and feature!='')">
+				<feature>
+						<FA value = "N"/>
+						<!--<xsl:if test=" fa!='' ">-->
+							<xsl:call-template name="feature_TO_FEATURE"/>
+						<!--</xsl:if>-->
+						<!--<xsl:if test="fa='N' or fa='V' or fa='C'">-->
+							<xsl:variable name="countfeature" select="count(featuredetail)"/>
+							<xsl:call-template name="value_TO_FEATUREDETAIL">
+								<xsl:with-param name="countfeature" select="$countfeature"/>
+							</xsl:call-template>
+						<!--</xsl:if>-->
+					</feature>
+			</xsl:when>
+			
+			<xsl:otherwise>
+				<xsl:if test="(fa!='' or feature!='') and (fa!='W' and fa!='M' and fa!='O' and fa!='-' or ($ACT = 'V' and ../lna = 'V' and fa = 'W'))">
+					<feature>
+						<xsl:call-template name="fa_TO_FA"/>
+						<xsl:if test=" fa!='' ">
+							<xsl:call-template name="feature_TO_FEATURE"/>
+						</xsl:if>
+						<xsl:if test="fa='N' or fa='V' or fa='C'">
+							<xsl:variable name="countfeature" select="count(featuredetail)"/>
+							<xsl:call-template name="value_TO_FEATUREDETAIL">
+								<xsl:with-param name="countfeature" select="$countfeature"/>
+							</xsl:call-template>
+						</xsl:if>
+					</feature>
+				</xsl:if>
+			</xsl:otherwise>
+		</xsl:choose>
+
+		<!--Rules: FEATURE is required when FA is populated,otherwise prohibited.-->
+
+
+		<!--Rules: FEATUREDETAIL is prohibited when FA not = N, V, C.-->
+
+
+		<!--</feature>-->
+	</xsl:template>
+
+
+	<xsl:template name="Supplier_ps_servicedetails">
+		<xsl:call-template name="lnum_TO_LOCNUM"/>
+		<xsl:call-template name="lnum_TO_LNUM"/>
+		<xsl:call-template name="exkey_TO_EXKEY"/>
+	</xsl:template>
+
+	<!--............Mapping for common sections...............-->
+
+
+	<xsl:template name="transfer">
+		<xsl:if test="../service">
+			<!--Checking if the call is from PS form-->
+
+			<!-- TCOPT is required when LNA = D or X,  optional when LNA = C or S, otherwise prohibited.-->
+			<!-- BAN rule : TCOPT is prohibited when EU locationaccess STATE is NY and S field = B.-->
+			<!-- BAS rule : TCOPT is prohibited when the S field is not populated with A, except when LNA = D, X, C or S.-->
+
+			<xsl:choose>
+				<xsl:when test="$STATE = 'CT' or $STATE = 'MA' or $STATE = 'ME' or $STATE = 'NH' or $STATE = 'NY' or $STATE = 'RI' or $STATE ='VT'">
+					<xsl:if test="not(/msgenvelope/body/localAdmin/location[*]/address/state= 'NY' and /msgenvelope/body/lns/service/sai='B')">
+						<xsl:if test="(lna='D' or lna='X' or lna='C' or lna='L')and tcopt != ''">
+							<TRANSFER>
+								<xsl:call-template name="tcopt_TO_TCOPT"/>
+							</TRANSFER>
+						</xsl:if>
+					</xsl:if>
+				</xsl:when>
+				<xsl:when test="$STATE = 'DC' or $STATE = 'DC' or $STATE = 'DE' or $STATE = 'MD' or $STATE = 'NJ' or $STATE = 'PA' or $STATE ='WV' or $STATE = 'VA'">
+					<xsl:choose>
+						<xsl:when test="not(/msgenvelope/body/lns/service/sai='A')  and not(lna='D' or lna='X' or lna='C' or lna='L')">
+						</xsl:when>
+						<xsl:otherwise>
+							<xsl:if test="(lna='D' or lna='X' or lna='C' or lna='L')and tcopt != ''">
+								<TRANSFER>
+									<xsl:call-template name="tcopt_TO_TCOPT"/>
+								</TRANSFER>
+							</xsl:if>
+						</xsl:otherwise>
+					</xsl:choose>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:if test="(lna='D' or lna='X' or lna='C' or lna='L')and tcopt != ''">
+						<TRANSFER>
+							<xsl:call-template name="tcopt_TO_TCOPT"/>
+						</TRANSFER>
+					</xsl:if>
+				</xsl:otherwise>
+			</xsl:choose>
+		</xsl:if>
+		<!--Checking if the call is from PS form-->
+		<xsl:if test="../disconnectInfo">
+			<TRANSFER>
+				<xsl:if test=" discNmbr != ''">
+								<xsl:call-template name="tcopt_TO_TCOPT"/>
+				</xsl:if>
+				<xsl:if test="tcopt = 'S'">
+					<xsl:call-template name="tctopri_TO_TCTOPRI"/>
+				</xsl:if>
+				<xsl:if test="tctopri != ''">
+					<xsl:call-template name="tcper_TO_TCPER"/>
+				</xsl:if>
+			</TRANSFER>
+		</xsl:if>
+
+		<!-- Trinsic would not do TCOPT functions as per issue resolution. -->
+		<!-- As the value TCOPT=T is not supported by Trinsic, below fields are not required.  So we can ignore this field in maps   -->
+		<!--
+        <xsl:call-template name="tctopri_TO_TCTOPRI"/>
+		<xsl:call-template name="tcid_TO_TCIDPRI"/>
+		<xsl:call-template name="tcname_TO_TCNAMEPRI"/>
+		<xsl:call-template name="tcper_TO_TCPER"/>
+        -->
+	</xsl:template>
+</xsl:stylesheet>

@@ -1,0 +1,41 @@
+<!-- Use this file to deploy some handlers/chains and services      -->
+<!-- Two ways to do this:                                           -->
+<!--   java org.apache.axis.client.AdminClient deploy.wsdd          -->
+<!--      after the axis server is running                          -->
+<!-- or                                                             -->
+<!--   java org.apache.axis.utils.Admin client|server deploy.wsdd   -->
+<!--      from the same directory that the Axis engine runs         -->
+
+<deployment
+    xmlns="http://xml.apache.org/axis/wsdd/"
+    xmlns:java="http://xml.apache.org/axis/wsdd/providers/java">
+
+  <!-- Services from FibonacciService WSDL service -->
+
+  <service name="fibonacci" provider="java:RPC" style="rpc" use="encoded">
+      <parameter name="wsdlTargetNamespace" value="urn:fibonacci"/>
+      <parameter name="wsdlServiceElement" value="FibonacciService"/>
+      <parameter name="schemaUnqualified" value="urn:fibonacci"/>
+      <parameter name="wsdlServicePort" value="fibonacci"/>
+      <parameter name="className" value="fibonacci.ws.FibonacciSoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="Fibonacci"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="calculateFibonacci" qname="operNS:calculateFibonacci" xmlns:operNS="urn:fibonacci" returnQName="calculateFibonacciReturn" returnType="rtns:int" xmlns:rtns="http://www.w3.org/2001/XMLSchema" soapAction="" >
+        <parameter qname="in0" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+      </operation>
+      <operation name="calculateFibonacciRange" qname="operNS:calculateFibonacciRange" xmlns:operNS="urn:fibonacci" returnQName="calculateFibonacciRangeReturn" returnType="rtns:ArrayOf_xsd_int" xmlns:rtns="urn:fibonacci" returnItemType="tns2:int" xmlns:tns2="http://www.w3.org/2001/XMLSchema" soapAction="" >
+        <parameter qname="in0" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="in1" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+      </operation>
+      <parameter name="allowedMethods" value="calculateFibonacciRange calculateFibonacci"/>
+      <parameter name="scope" value="Session"/>
+
+      <arrayMapping
+        xmlns:ns="urn:fibonacci"
+        qname="ns:ArrayOf_xsd_int"
+        type="java:int[]"
+        innerType="cmp-ns:int" xmlns:cmp-ns="http://www.w3.org/2001/XMLSchema"
+        encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+      />
+  </service>
+</deployment>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<AmazonBestSelling catagory="XSLT">
+	<Book ISBN="0201740958">
+		<Title>Essential XML Quick Reference</Title>
+		<Rank>1</Rank>
+		<Author>Aaron Skonnard</Author>
+		<PublishDate>11/23/2001</PublishDate>
+		<Price>29.99</Price>
+	</Book>
+
+	<Book ISBN="1861005067">
+		<Title>XSLT Programmer's Reference 2nd Edition</Title>
+		<Rank>2</Rank>
+		<Author>Michael H. Kay</Author>
+		<PublishDate>04/01/2001</PublishDate>
+		<Price>34.99</Price>
+	</Book>
+
+	<Book ISBN="0596003722">
+		<Title>XSLT Cookbook</Title>
+		<Rank>3</Rank>
+		<Author>Sal Mangano</Author>
+		<PublishDate>12/01/2002</PublishDate>
+		<Price>39.95</Price>
+	</Book>
+
+	<Book ISBN="0596000537">
+		<Title>XSLT</Title>
+		<Rank>4</Rank>
+		<Author>Doug Tidwell</Author>
+		<PublishDate>08/15/2001</PublishDate>
+		<Price>39.95</Price>
+	</Book>
+
+	<Book ISBN="1861005946">
+		<Title>Beginning XSLT</Title>
+		<Rank>5</Rank>
+		<Author>Jeni Tennison</Author>
+		<PublishDate>05/01/2002</PublishDate>
+		<Price>39.99</Price>
+	</Book>
+
+</AmazonBestSelling>

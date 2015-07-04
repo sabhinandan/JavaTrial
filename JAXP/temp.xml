@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<Request>
+	<lsr_order>
+		<lsr>
+			<lsr_adminsection>
+				<CCNA value="C12"/>
+				<PON value="NF10UNEP1B"/>
+				<LOCQTY value="001"/>
+				<AN value="303-698-0499"/>
+				<DTSENT value="05-03-2005-0132PM"/>
+				<DDD value="05-23-2005"/>
+				<REQTYP value="MB"/>
+				<ACT value="C"/>
+				<RTR value="C"/>
+				<AGAUTH value="Y"/>
+				<DATED value="05-23-2005"/>
+				<AUTHNM value="Manjul"/>
+				<TOS value="2B"/>
+				<DLQTY value="2"/>
+			</lsr_adminsection>
+			<contactsection>
+				<INIT value="Manjul"/>
+				<TELNO value="510-500-1256"/>
+				<IMPCON>
+					<NAME value="Rishi"/>
+					<TELNO value="510-500-1256"/>
+				</IMPCON>
+			</contactsection>
+			<REMARKS value="[Test: Complete]"/>
+		</lsr>
+		<eu>
+			<eu_adminsection>
+				<DQTY value="0"/>
+			</eu_adminsection>
+			<locationaccesscontainer type="container">
+				<locationaccess>
+					<LOCNUM value="001"/>
+					<NAME value="Manjul"/>
+					<SANO value="698"/>
+					<SASN value="Harrison"/>
+					<SATH value="Rd"/>
+					<CITY value="Denver"/>
+					<STATE value="CO"/>
+					<ZIP value="80209"/>
+					<LCON value="Ryan Giggs"/>
+					<TELNO value="303-698-0499"/>
+					<AFT value="D"/>
+				</locationaccess>
+			</locationaccesscontainer>
+		</eu>
+	</lsr_order>
+</Request>
+<!-- <root>
+	<ruleContainer type="container">
+		<field>AN</field>
+		<ID>LSR_ADMIN_AN_5</ID>
+		<description>AN is prohibited when REQTYP = C.</description>
+	</ruleContainer>
+	<ruleContainer type="container">
+		<field>AN</field>
+		<ID>LSR_ADMIN_AN_6</ID>
+		<description>The valid values of AN are A,B,C,D.</description>
+	</ruleContainer>
+</root>
+-->

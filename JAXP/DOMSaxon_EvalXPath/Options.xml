@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<options>
+  <!-- General -->
+  <option key="hideWhenMinimized" value="1" />
+  <option key="hideWhenClosed" value="1" />
+  <option key="confirmDelete" value="1" />
+  <!-- Startup -->
+  <option key="showSplashScreen" value="1" />
+  <option key="mainWndMaximized" value="1" />
+  <option key="homepage" value="http://www.PerfectXML.com" />
+  <!-- Exit -->
+  <option key="clearHTMLCacheOnExit" value="1" />
+  <option key="clearXMLCacheOnExit" value="1" />
+  <!-- Updates -->
+  <option key="newFeedsUrl" value="http://www.PerfectXML.com/RSSConnect/newFeeds.xml" />
+  <!-- Database -->
+  <!-- Visit www.ConnectionStrings.com for database connection string text examples.-->
+  <option key="dbType" value="OLEDB" />
+  <option key="connectionString" value="Provider=Microsoft.Jet.OLEDB.4.0;Data Source=RSSConnect.MDB" />
+  <!-- Indexing -->
+  <option key="updateIndexAfterExport" value="0" />
+  <option key="dbLastIndexed" value="" />
+  <!-- Other (not available in Tools | Options)-->
+  <option key="showStatusBar" value="1" />
+  <option key="showFeedTree" value="1" />
+  <option key="navigationBar" value="1" />
+  <option key="xsltFile" value="Default.xsl" />
+  <option key="optionsDlgTab" value="Options" />
+  <option key="searchUsing" value="Microsoft &amp;KB Articles" />
+  <option key="applicationUpdateUrl" value="http://www.PerfectXML.com/RSSConnect/RSSConnectUpdates.asp?curVer=" />
+</options>
